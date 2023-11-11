@@ -207,4 +207,4 @@ sprites:
 .byte $78, $08, $00, $88
 
 .segment "CHR"
-.incbin "starfield.chr"
+.incbin "lava_background.chr"
