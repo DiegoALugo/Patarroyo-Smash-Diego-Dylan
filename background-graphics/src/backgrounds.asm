@@ -1109,16 +1109,16 @@ palettes:
 .byte $10, $0f, $1c, $0c
 .byte $10, $07, $36, $16
 
-.byte $10, $2d, $10, $15
-.byte $10, $19, $09, $29
-.byte $10, $19, $09, $29
-.byte $10, $19, $09, $29
+.byte $10, $00, $10, $30
+.byte $10, $01, $21, $31
+.byte $10, 06, $16, $26
+.byte $10, $09, $19, $20
 
 sprites:
-.byte $70, $00, $00, $80  ;y position, sprite, palette, x position
-.byte $70, $00, $00, $88
-.byte $78, $00, $00, $80
-.byte $78, $00, $00, $88
+.byte $04, $06, $03, $23
+.byte $05, $07, $03, $23
+.byte $04, $16, $03, $24
+.byte $05, $17, $03, $24
 
 .segment "CHR"
 .incbin "lava_background.chr"
