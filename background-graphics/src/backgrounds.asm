@@ -1,6 +1,12 @@
 .include "constants.inc"
 .include "header.inc"
 
+.segment "ZEROPAGE"
+player_x: .res 1
+player_y: .res 1
+player_dir: .res 1
+.exportzp player_x, player_y
+
 .segment "CODE"
 .proc irq_handler
   RTI
@@ -11,6 +17,10 @@
   STA OAMADDR
   LDA #$02
   STA OAMDMA
+
+	JSR update_player
+    JSR draw_player
+	
 	LDA #$00
 	STA $2005
 	STA $2005
@@ -34,242 +44,22 @@ load_palettes:
   CPX #$20
   BNE load_palettes
 
-  ; write sprite data
-  LDX #$00
-load_sprites:
-  LDA sprites,X
-  STA $0200,X
-  INX
-  CPX #$10
-  BNE load_sprites
 
 	; write nametables
 
-	; Placing first cloud line
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$00
-	STA PPUADDR
-	LDX #$3e
-	STX PPUDATA
+; Placing first cloud line
+	LDY  #$00
 
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$01
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$02
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$03
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$04
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$05
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$06
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$07
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$08
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$09
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$0A
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$0B
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$0C
-	STA PPUADDR
-	STX PPUDATA
-	
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$0D
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$0E
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$0F
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$10
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$11
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$12
-	STA PPUADDR
-	STX PPUDATA	
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$13
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$14
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$15
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$16
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$17
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$18
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$19
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$1A
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$1B
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$1C
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$1D
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$1E
-	STA PPUADDR
-	STX PPUDATA
-
-	LDA PPUSTATUS
-	LDA #$20
-	STA PPUADDR
-	LDA #$1F
-	STA PPUADDR
-	STX PPUDATA
+	first_line:
+		LDA PPUSTATUS
+		LDA #$20
+		STA PPUADDR
+		STY PPUADDR
+		LDX #$3e
+		STX PPUDATA
+		INY
+		CPY #$20
+		BNE first_line
 
 	; Placing second cloud line (first tile)
 
@@ -1099,6 +889,121 @@ forever:
   JMP forever
 .endproc
 
+.proc draw_player
+  ; save registers
+  PHP
+  PHA
+  TXA
+  PHA
+  TYA
+  PHA
+
+  ; write player ship tile numbers
+  LDA #$06
+  STA $0201
+  LDA #$07
+  STA $0205
+  LDA #$16
+  STA $0209
+  LDA #$17
+  STA $020d
+
+  ; write player ship tile attributes
+  ; use palette 0
+  LDA #$00
+  STA $0202
+  STA $0206
+  STA $020a
+  STA $020e
+
+  ; top left tile:
+  LDA player_y
+  STA $0200
+  LDA player_x
+  STA $0203
+
+  ; top right tile (x + 8):
+  LDA player_y
+  STA $0204
+  LDA player_x
+  CLC
+  ADC #$08
+  STA $0207
+
+  ; bottom left tile (y + 8):
+  LDA player_y
+  CLC
+  ADC #$08
+  STA $0208
+  LDA player_x
+  STA $020b
+
+  ; bottom right tile (x + 8, y + 8)
+  LDA player_y
+  CLC
+  ADC #$08
+  STA $020c
+  LDA player_x
+  CLC
+  ADC #$08
+  STA $020f
+
+  ; restore registers and return
+  PLA
+  TAY
+  PLA
+  TAX
+  PLA
+  PLP
+  RTS
+.endproc
+
+.proc update_player
+  PHP
+  PHA
+  TXA
+  PHA
+  TYA
+  PHA
+
+  LDA player_x
+  CMP #$e0
+  BCC not_at_right_edge
+  ; if BCC is not taken, we are greater than $e0
+  LDA #$00
+  STA player_dir    ; start moving left
+  JMP direction_set ; we already chose a direction,
+                    ; so we can skip the left side check
+not_at_right_edge:
+  LDA player_x
+  CMP #$10
+  BCS direction_set
+  ; if BCS not taken, we are less than $10
+  LDA #$01
+  STA player_dir   ; start moving right
+direction_set:
+  ; now, actually update player_x
+  LDA player_dir
+  CMP #$01
+  BEQ move_right
+  ; if player_dir minus $01 is not zero,
+  ; that means player_dir was $00 and
+  ; we need to move left
+  DEC player_x
+  JMP exit_subroutine
+move_right:
+  INC player_x
+exit_subroutine:
+  ; all done, clean up and return
+  PLA
+  TAY
+  PLA
+  TAX
+  PLA
+  PLP
+  RTS
+.endproc
+
 .segment "VECTORS"
 .addr nmi_handler, reset_handler, irq_handler
 
@@ -1109,16 +1014,10 @@ palettes:
 .byte $10, $0f, $1c, $0c
 .byte $10, $07, $36, $16
 
-.byte $10, $00, $10, $30
+.byte $10, $09, $19, $20
 .byte $10, $01, $21, $31
 .byte $10, 06, $16, $26
 .byte $10, $09, $19, $20
-
-sprites:
-.byte $B8, $06, $03, $20
-.byte $B8, $07, $03, $28
-.byte $C0, $16, $03, $20
-.byte $C0, $17, $03, $28
 
 .segment "CHR"
 .incbin "lava_background.chr"
