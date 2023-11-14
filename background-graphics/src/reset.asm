@@ -36,7 +36,6 @@ vblankwait2:
   STA player_x
   LDA #$b8
   STA player_y
-
-
+  
   JMP main
 .endproc

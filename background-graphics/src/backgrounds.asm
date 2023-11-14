@@ -1,11 +1,14 @@
 .include "constants.inc"
 .include "header.inc"
+.import read_controller1
 
 .segment "ZEROPAGE"
 player_x: .res 1
 player_y: .res 1
-player_dir: .res 1
-.exportzp player_x, player_y
+scroll: .res 1
+ppuctrl_settings: .res 1
+pad1: .res 1
+.exportzp player_x, player_y, pad1
 
 .segment "CODE"
 .proc irq_handler
@@ -18,6 +21,7 @@ player_dir: .res 1
   LDA #$02
   STA OAMDMA
 
+	JSR read_controller1
 	JSR update_player
     JSR draw_player
 	
@@ -959,44 +963,71 @@ forever:
 .endproc
 
 .proc update_player
-  PHP
-  PHA
+  PHP  ; Start by saving registers,
+  PHA  ; as usual.
   TXA
   PHA
   TYA
   PHA
 
+  ; Load button presses
+  LDA pad1
+
+  ; Check Left button
+  AND #BTN_LEFT
+  BEQ check_right ; If result is zero, left not pressed
+  ; Check if moving left would not go beyond the left screen edge
   LDA player_x
-  CMP #$e0
-  BCC not_at_right_edge
-  ; if BCC is not taken, we are greater than $e0
-  LDA #$00
-  STA player_dir    ; start moving left
-  JMP direction_set ; we already chose a direction,
-                    ; so we can skip the left side check
-not_at_right_edge:
-  LDA player_x
-  CMP #$10
-  BCS direction_set
-  ; if BCS not taken, we are less than $10
-  LDA #$01
-  STA player_dir   ; start moving right
-direction_set:
-  ; now, actually update player_x
-  LDA player_dir
-  CMP #$01
-  BEQ move_right
-  ; if player_dir minus $01 is not zero,
-  ; that means player_dir was $00 and
-  ; we need to move left
+  CMP #MIN_X_POSITION
+  BEQ done_checking_left
   DEC player_x
-  JMP exit_subroutine
-move_right:
+done_checking_left:
+
+check_right:
+  ; Check Right button
+  LDA pad1
+  AND #BTN_RIGHT
+  BEQ check_up
+  ; Check if moving right would not go beyond the right screen edge
+  LDA player_x
+  CMP #MAX_X_POSITION
+  BEQ done_checking_right
   INC player_x
-exit_subroutine:
-  ; all done, clean up and return
-  PLA
-  TAY
+done_checking_right:
+
+check_up:
+  ; Check Up button
+  LDA pad1
+  AND #BTN_UP
+  BEQ check_down
+  ; Check if moving up would not go beyond the top screen edge
+  LDA player_y
+  CMP #MIN_Y_POSITION
+  BEQ done_checking_up
+  DEC player_y
+done_checking_up:
+
+check_down:
+  ; Check Down button
+  LDA pad1
+  AND #BTN_DOWN
+  BEQ done_checking
+
+  ; Check if moving down would not go beyond the bottom screen edge
+  LDA player_y
+  CMP #MAX_Y_POSITION
+  BEQ done_checking_down
+  INC player_y
+done_checking_down:
+
+done_checking:
+  ; Additional collision detection logic can be added here
+  ; For example, check if the player collides with the floor or platforms
+  ; Compare player_x, player_y with floor and platform positions and sizes
+  ; Adjust player position accordingly
+
+  PLA ; Done with updates, restore registers
+  TAY ; and return to where we called this
   PLA
   TAX
   PLA
@@ -1023,5 +1054,6 @@ palettes:
 .incbin "lava_background.chr"
 
 ;ca65 src/backgrounds.asm
+;ca65 src/controllers.asm
 ;ca65 src/reset.asm
-;ld65 src/reset.o src/backgrounds.o -C nes.cfg -o backgrounds.nes
+;ld65 src/reset.o src/backgrounds.o src/controllers.o -C nes.cfg -o backgrounds.nes
