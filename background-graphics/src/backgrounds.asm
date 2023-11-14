@@ -1115,7 +1115,7 @@ palettes:
 .byte $10, $19, $09, $29
 
 sprites:
-.byte $70, $00, $00, $80
+.byte $70, $00, $00, $80  ;y position, sprite, palette, x position
 .byte $70, $00, $00, $88
 .byte $78, $00, $00, $80
 .byte $78, $00, $00, $88
