@@ -893,6 +893,15 @@ forever:
   JMP forever
 .endproc
 
+; Define constants for animation
+ANIM_SPD = 4
+NUM_FRAMES = 2
+
+.segment "DATA"
+frame_counter: .byte 0   ; Initialize frame_counter to zero
+frame_index:   .byte 0   ; Declare frame_index
+
+
 .proc draw_player
   ; save registers
   PHP
@@ -902,15 +911,42 @@ forever:
   TYA
   PHA
 
-  ; write player ship tile numbers
-  LDA #$06
+; Calculate animation frame based on frame counter
+  LDA frame_counter
+  AND #$07           ; Mask to keep only the lower 3 bits (0-7)
+  STA frame_index    ; Store the result in frame_index
+
+  ; Write player ship tile numbers based on animation frame
+  LDA frame_index
+  ASL A              ; Multiply frame_index by 2 (assuming each sprite is 2 tiles wide)
   STA $0201
-  LDA #$07
+  CLC
+  ADC #$06
   STA $0205
-  LDA #$16
+  CLC
+  ADC #$06
   STA $0209
-  LDA #$17
-  STA $020d
+  CLC
+  ADC #$06
+  STA $020D
+
+  ASL A              ; Multiply frame_index by 2 (assuming each sprite is 2 tiles wide)
+  STA $0211
+  CLC
+  ADC #$06
+  STA $0215
+  CLC
+  ADC #$06
+  STA $0219
+  CLC
+  ADC #$06
+  STA $021D
+
+  ; Increment animation frame counter
+  LDA frame_counter
+  CLC
+  ADC #ANIM_SPD
+  STA frame_counter
 
   ; write player ship tile attributes
   ; use palette 0
@@ -1050,6 +1086,7 @@ palettes:
 .byte $10, 06, $16, $26
 .byte $10, $09, $19, $20
 
+
 .segment "CHR"
 .incbin "lava_background.chr"
 
@@ -1057,3 +1094,6 @@ palettes:
 ;ca65 src/controllers.asm
 ;ca65 src/reset.asm
 ;ld65 src/reset.o src/backgrounds.o src/controllers.o -C nes.cfg -o backgrounds.nes
+
+
+
