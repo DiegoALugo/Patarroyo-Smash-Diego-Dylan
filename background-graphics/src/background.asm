@@ -1,60 +1,10 @@
 .include "constants.inc"
-.include "header.inc"
-.import read_controller1
-
-.segment "ZEROPAGE"
-player_x: .res 1
-player_y: .res 1
-scroll: .res 1
-ppuctrl_settings: .res 1
-pad1: .res 1
-.exportzp player_x, player_y, pad1
-
 .segment "CODE"
-.proc irq_handler
-  RTI
-.endproc
 
-.proc nmi_handler
-  LDA #$00
-  STA OAMADDR
-  LDA #$02
-  STA OAMDMA
-
-	JSR read_controller1
-	JSR update_player
-    JSR draw_player
-	
-	LDA #$00
-	STA $2005
-	STA $2005
-  RTI
-.endproc
-
-.import reset_handler
-
-.export main
-.proc main
-  ; write a palette
-  LDX PPUSTATUS
-  LDX #$3f
-  STX PPUADDR
-  LDX #$00
-  STX PPUADDR
-load_palettes:
-  LDA palettes,X
-  STA PPUDATA
-  INX
-  CPX #$20
-  BNE load_palettes
-
-
-	; write nametables
-
-; Placing first cloud line
-	LDY  #$00
-
-	first_line:
+.export draw_background
+.proc draw_background
+    LDY #$00
+    first_line:
 		LDA PPUSTATUS
 		LDA #$20
 		STA PPUADDR
@@ -840,7 +790,7 @@ load_palettes:
 		LDA #$23
 		STA PPUADDR
 		STY PPUADDR
-		LDX #%01010101
+		LDX #%00000101
 		STX PPUDATA
 		INY
 		CPY #$c8
@@ -860,10 +810,10 @@ load_palettes:
 		INY
 		CPY #$e5
 		BNE platform_colors
-	
-	; volcano mouth color
 
-	LDA PPUSTATUS
+        ; volcano mouth color
+
+    LDA PPUSTATUS
     LDA #$23
     STA PPUADDR
     LDA #$e5
@@ -871,7 +821,7 @@ load_palettes:
     LDA #%11000000
     STA PPUDATA
 
-	LDA PPUSTATUS
+    LDA PPUSTATUS
     LDA #$23
     STA PPUADDR
     LDA #$e6
@@ -879,6 +829,7 @@ load_palettes:
     LDA #%00110000
     STA PPUDATA
 
+<<<<<<< HEAD:background-graphics/src/backgrounds.asm
 
 vblankwait:       ; wait for another vblank before continuing
   BIT PPUSTATUS
@@ -1097,3 +1048,7 @@ palettes:
 
 
 
+=======
+    RTS
+.endproc
+>>>>>>> cd252e54501ee5ea16df592b3a1ad46e65edf576:background-graphics/src/background.asm
