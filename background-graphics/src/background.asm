@@ -1,60 +1,10 @@
 .include "constants.inc"
-.include "header.inc"
-.import read_controller1
-
-.segment "ZEROPAGE"
-player_x: .res 1
-player_y: .res 1
-scroll: .res 1
-ppuctrl_settings: .res 1
-pad1: .res 1
-.exportzp player_x, player_y, pad1
-
 .segment "CODE"
-.proc irq_handler
-  RTI
-.endproc
 
-.proc nmi_handler
-  LDA #$00
-  STA OAMADDR
-  LDA #$02
-  STA OAMDMA
-
-	JSR read_controller1
-	JSR update_player
-    JSR draw_player
-	
-	LDA #$00
-	STA $2005
-	STA $2005
-  RTI
-.endproc
-
-.import reset_handler
-
-.export main
-.proc main
-  ; write a palette
-  LDX PPUSTATUS
-  LDX #$3f
-  STX PPUADDR
-  LDX #$00
-  STX PPUADDR
-load_palettes:
-  LDA palettes,X
-  STA PPUDATA
-  INX
-  CPX #$20
-  BNE load_palettes
-
-
-	; write nametables
-
-; Placing first cloud line
-	LDY  #$00
-
-	first_line:
+.export draw_background
+.proc draw_background
+    LDY #$00
+    first_line:
 		LDA PPUSTATUS
 		LDA #$20
 		STA PPUADDR
@@ -840,7 +790,7 @@ load_palettes:
 		LDA #$23
 		STA PPUADDR
 		STY PPUADDR
-		LDX #%01010101
+		LDX #%00000101
 		STX PPUDATA
 		INY
 		CPY #$c8
@@ -860,10 +810,10 @@ load_palettes:
 		INY
 		CPY #$e5
 		BNE platform_colors
-	
-	; volcano mouth color
 
-	LDA PPUSTATUS
+        ; volcano mouth color
+
+    LDA PPUSTATUS
     LDA #$23
     STA PPUADDR
     LDA #$e5
@@ -871,7 +821,7 @@ load_palettes:
     LDA #%11000000
     STA PPUDATA
 
-	LDA PPUSTATUS
+    LDA PPUSTATUS
     LDA #$23
     STA PPUADDR
     LDA #$e6
@@ -879,181 +829,5 @@ load_palettes:
     LDA #%00110000
     STA PPUDATA
 
-
-vblankwait:       ; wait for another vblank before continuing
-  BIT PPUSTATUS
-  BPL vblankwait
-
-  LDA #%10010000  ; turn on NMIs, sprites use first pattern table
-  STA PPUCTRL
-  LDA #%00011110  ; turn on screen
-  STA PPUMASK
-
-forever:
-  JMP forever
+    RTS
 .endproc
-
-.proc draw_player
-  ; save registers
-  PHP
-  PHA
-  TXA
-  PHA
-  TYA
-  PHA
-
-  ; write player ship tile numbers
-  LDA #$06
-  STA $0201
-  LDA #$07
-  STA $0205
-  LDA #$16
-  STA $0209
-  LDA #$17
-  STA $020d
-
-  ; write player ship tile attributes
-  ; use palette 0
-  LDA #$00
-  STA $0202
-  STA $0206
-  STA $020a
-  STA $020e
-
-  ; top left tile:
-  LDA player_y
-  STA $0200
-  LDA player_x
-  STA $0203
-
-  ; top right tile (x + 8):
-  LDA player_y
-  STA $0204
-  LDA player_x
-  CLC
-  ADC #$08
-  STA $0207
-
-  ; bottom left tile (y + 8):
-  LDA player_y
-  CLC
-  ADC #$08
-  STA $0208
-  LDA player_x
-  STA $020b
-
-  ; bottom right tile (x + 8, y + 8)
-  LDA player_y
-  CLC
-  ADC #$08
-  STA $020c
-  LDA player_x
-  CLC
-  ADC #$08
-  STA $020f
-
-  ; restore registers and return
-  PLA
-  TAY
-  PLA
-  TAX
-  PLA
-  PLP
-  RTS
-.endproc
-
-.proc update_player
-  PHP  ; Start by saving registers,
-  PHA  ; as usual.
-  TXA
-  PHA
-  TYA
-  PHA
-
-  ; Load button presses
-  LDA pad1
-
-  ; Check Left button
-  AND #BTN_LEFT
-  BEQ check_right ; If result is zero, left not pressed
-  ; Check if moving left would not go beyond the left screen edge
-  LDA player_x
-  CMP #MIN_X_POSITION
-  BEQ done_checking_left
-  DEC player_x
-done_checking_left:
-
-check_right:
-  ; Check Right button
-  LDA pad1
-  AND #BTN_RIGHT
-  BEQ check_up
-  ; Check if moving right would not go beyond the right screen edge
-  LDA player_x
-  CMP #MAX_X_POSITION
-  BEQ done_checking_right
-  INC player_x
-done_checking_right:
-
-check_up:
-  ; Check Up button
-  LDA pad1
-  AND #BTN_UP
-  BEQ check_down
-  ; Check if moving up would not go beyond the top screen edge
-  LDA player_y
-  CMP #MIN_Y_POSITION
-  BEQ done_checking_up
-  DEC player_y
-done_checking_up:
-
-check_down:
-  ; Check Down button
-  LDA pad1
-  AND #BTN_DOWN
-  BEQ done_checking
-
-  ; Check if moving down would not go beyond the bottom screen edge
-  LDA player_y
-  CMP #MAX_Y_POSITION
-  BEQ done_checking_down
-  INC player_y
-done_checking_down:
-
-done_checking:
-  ; Additional collision detection logic can be added here
-  ; For example, check if the player collides with the floor or platforms
-  ; Compare player_x, player_y with floor and platform positions and sizes
-  ; Adjust player position accordingly
-
-  PLA ; Done with updates, restore registers
-  TAY ; and return to where we called this
-  PLA
-  TAX
-  PLA
-  PLP
-  RTS
-.endproc
-
-.segment "VECTORS"
-.addr nmi_handler, reset_handler, irq_handler
-
-.segment "RODATA"
-palettes:
-.byte $10, $07, $20, $16
-.byte $10, $2d, $27, $0f
-.byte $10, $0f, $1c, $0c
-.byte $10, $07, $36, $16
-
-.byte $10, $09, $19, $20
-.byte $10, $01, $21, $31
-.byte $10, 06, $16, $26
-.byte $10, $09, $19, $20
-
-.segment "CHR"
-.incbin "lava_background.chr"
-
-;ca65 src/backgrounds.asm
-;ca65 src/controllers.asm
-;ca65 src/reset.asm
-;ld65 src/reset.o src/backgrounds.o src/controllers.o -C nes.cfg -o backgrounds.nes
