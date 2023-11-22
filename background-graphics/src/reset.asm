@@ -34,7 +34,7 @@ vblankwait2:
 	; initialize zero-page values
   LDA #$20
   STA player_x
-  LDA #$b8
+  LDA #$b7
   STA player_y
   
   JMP main
