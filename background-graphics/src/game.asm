@@ -198,7 +198,6 @@ check_fall:
 
   DEC player_x              ; Decrease X to move left
   JMP platform_range        ; Checks if player within platform range
->>>>>>> 2e5522f686eaab02164f07ab29a9896883e90922
 done_checking_left:
 
 check_right:
@@ -214,7 +213,6 @@ check_right:
 
   INC player_x              ; Increase x coordinate to move right
   JMP platform_range        ; Checks if player within platform range after every horizontal movement
->>>>>>> 2e5522f686eaab02164f07ab29a9896883e90922
 done_checking_right:
 
 platform_range:
