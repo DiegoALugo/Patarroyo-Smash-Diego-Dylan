@@ -14,8 +14,6 @@ onPlatform: .byte 0
 inPlatformRange: .byte 0
 spriteJump: .byte 0
 spriteFall: .byte 0
-walkCounter: .res 1
-walkAnimation: .res 1
 .exportzp player_x, player_y, pad1, jumpCounter, jumpSpriteFlag, spriteJump, spriteFall
 
 .segment "CODE"
@@ -59,11 +57,6 @@ load_palettes:
 
  JSR draw_background
 
- ; initializing walk and animation variables
-  LDA #$00
-  STA walkCounter
-  LDA #$00
-  STA walkAnimation
 
 vblankwait:       ; wait for another vblank before continuing
   BIT PPUSTATUS
@@ -97,25 +90,8 @@ check_fall:
 
   JMP standing_sprite ; If you got here, both fall and jump flags are deactivated
   
-; Check if sprite is walking
-  LDA walkAnimation
-  CMP #$01   ; Check if the walking animation is active
-  BNE standing_sprite ; If not, use the standing sprite
 
-  ; Use the walking sprite tiles
-  LDA walkCounter
-  AND #$03   ; using lower 2 bits for animation frame
-  TAX ; transfer to x register
-  LDA walking_frames, X
-  STA $0201
-  LDA walking_frames + 1, X
-  STA $0205
-  LDA walking_frames + 2, X
-  STA $0209
-  LDA walking_frames + 3, X
-  STA $020d
 
-  JMP continue
 
   standing_sprite:
     LDA #$06
@@ -218,20 +194,8 @@ check_fall:
   LDA player_x
   CMP #MIN_X_POSITION       ; Checks left screen limit
   BEQ done_checking_left
-<<<<<<< HEAD
   DEC player_x
 
-  ; Start walking animation
-  LDA walkCounter
-  INX ; increment x register
-  CPX #$03 ; compare with immediate value 1
-  BNE skip_increment
-  LDA #$00 ; if comparison result is equal, load 0 into accumulator
-  STA walkCounter ; store accumulator in variable
-  INC walkAnimation ; increment value of variable
-skip_increment:
-
-=======
   DEC player_x              ; Decrease X to move left
   JMP platform_range        ; Checks if player within platform range
 >>>>>>> 2e5522f686eaab02164f07ab29a9896883e90922
@@ -246,22 +210,8 @@ check_right:
   LDA player_x
   CMP #MAX_X_POSITION       ; Checks right screen limit
   BEQ done_checking_right
-<<<<<<< HEAD
-  INC player_x
 
-  LDA walkCounter
-  INX
-  CPX #$03
-  BNE skip_increment_right
-  LDA #$00
-  STA walkCounter
-  INC walkAnimation
-skip_increment_right:
 
-; Increment walkCounter for the next frame
-  INC walkCounter
-
-=======
   INC player_x              ; Increase x coordinate to move right
   JMP platform_range        ; Checks if player within platform range after every horizontal movement
 >>>>>>> 2e5522f686eaab02164f07ab29a9896883e90922
@@ -404,9 +354,6 @@ palettes:
 .byte $10, $06, $16, $26
 .byte $10, $09, $19, $20
 
-walking_frames:
-.byte $06, $07, $16, $17
-.byte $08, $09, $18, $19
 
 .segment "CHR"
 .incbin "lava_background.chr"
