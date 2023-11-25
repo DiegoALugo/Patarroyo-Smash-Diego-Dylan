@@ -12,8 +12,6 @@ jumpCounter: .res 1
 jumpSpriteFlag: .res 1
 spriteJump: .byte 0
 spriteFall: .byte 0
-walkCounter: .res 1
-walkAnimation: .res 1
 .exportzp player_x, player_y, pad1, jumpCounter, jumpSpriteFlag, spriteJump, spriteFall
 
 .segment "CODE"
@@ -42,11 +40,6 @@ walkAnimation: .res 1
 
 .export main
 .proc main
-  ; initializing walk and animation variables
-  LDA #$00
-  STA walkCounter
-  LDA #$00
-  STA walkAnimation
   ; write a palette
   LDX PPUSTATUS
   LDX #$3f
@@ -94,25 +87,6 @@ check_fall:
 
   JMP standing_sprite ; If you got here, both fall and jump flags are deactivated
   
-; Check if sprite is walking
-  LDA walkAnimation
-  CMP #$01   ; Check if the walking animation is active
-  BNE standing_sprite ; If not, use the standing sprite
-
-  ; Use the walking sprite tiles
-  LDA walkCounter
-  AND #$03   ; Use the lower 2 bits for the animation frame
-  TAX
-  LDA walking_frames, X
-  STA $0201
-  LDA walking_frames + 1, X
-  STA $0205
-  LDA walking_frames + 2, X
-  STA $0209
-  LDA walking_frames + 3, X
-  STA $020d
-
-  JMP continue
 
   standing_sprite:
     LDA #$06
@@ -217,15 +191,6 @@ check_fall:
   BEQ done_checking_left
   DEC player_x
 
-  ; Start walking animation
-  LDA walkCounter
-  INX
-  CPX #$01   ; Change this value based on the number of frames in your walking animation
-  BNE skip_increment
-  LDA #$00
-  STA walkCounter
-  INC walkAnimation
-skip_increment:
 
 done_checking_left:
 
@@ -240,14 +205,6 @@ check_right:
   BEQ done_checking_right
   INC player_x
 
-  LDA walkCounter
-  INX
-  CPX #$01   ; Change this value based on the number of frames in your walking animation
-  BNE skip_increment_right
-  LDA #$00
-  STA walkCounter
-  INC walkAnimation
-skip_increment_right:
 
 done_checking_right:
 
@@ -316,8 +273,6 @@ finished_falling:
 
   done_checking:
 
-; Increment walkCounter for the next frame
-  INC walkCounter
 
   PLA ; Done with updates, restore registers
   TAY ; and return to where we called this
@@ -344,11 +299,6 @@ palettes:
 .byte $10, 06, $16, $26
 .byte $10, $09, $19, $20
 
-walking_frames:
-  .byte $06, $07
-  .byte $16, $17
-  .byte $08, $09
-  .byte $18, $19
 
 .segment "CHR"
 .incbin "lava_background.chr"
