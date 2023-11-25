@@ -194,7 +194,6 @@ check_fall:
   LDA player_x
   CMP #MIN_X_POSITION       ; Checks left screen limit
   BEQ done_checking_left
-  DEC player_x
 
   DEC player_x              ; Decrease X to move left
   JMP platform_range        ; Checks if player within platform range
