@@ -10,10 +10,10 @@ ppuctrl_settings: .res 1
 pad1: .res 1
 jumpCounter: .res 1
 jumpSpriteFlag: .res 1
-onPlatform: .byte 0
-inPlatformRange: .byte 0
 spriteJump: .byte 0
 spriteFall: .byte 0
+walkCounter: .res 1
+walkAnimation: .res 1
 .exportzp player_x, player_y, pad1, jumpCounter, jumpSpriteFlag, spriteJump, spriteFall
 
 .segment "CODE"
@@ -42,6 +42,11 @@ spriteFall: .byte 0
 
 .export main
 .proc main
+  ; initializing walk and animation variables
+  LDA #$00
+  STA walkCounter
+  LDA #$00
+  STA walkAnimation
   ; write a palette
   LDX PPUSTATUS
   LDX #$3f
@@ -56,7 +61,6 @@ load_palettes:
   BNE load_palettes
 
  JSR draw_background
-
 
 vblankwait:       ; wait for another vblank before continuing
   BIT PPUSTATUS
@@ -90,8 +94,25 @@ check_fall:
 
   JMP standing_sprite ; If you got here, both fall and jump flags are deactivated
   
+; Check if sprite is walking
+  LDA walkAnimation
+  CMP #$01   ; Check if the walking animation is active
+  BNE standing_sprite ; If not, use the standing sprite
 
+  ; Use the walking sprite tiles
+  LDA walkCounter
+  AND #$03   ; Use the lower 2 bits for the animation frame
+  TAX
+  LDA walking_frames, X
+  STA $0201
+  LDA walking_frames + 1, X
+  STA $0205
+  LDA walking_frames + 2, X
+  STA $0209
+  LDA walking_frames + 3, X
+  STA $020d
 
+  JMP continue
 
   standing_sprite:
     LDA #$06
@@ -192,11 +213,20 @@ check_fall:
   BEQ check_right ; If result is zero, left not pressed
   ; Check if moving left would not go beyond the left screen edge
   LDA player_x
-  CMP #MIN_X_POSITION       ; Checks left screen limit
+  CMP #MIN_X_POSITION
   BEQ done_checking_left
+  DEC player_x
 
-  DEC player_x              ; Decrease X to move left
-  JMP platform_range        ; Checks if player within platform range
+  ; Start walking animation
+  LDA walkCounter
+  INX
+  CPX #$01   ; Change this value based on the number of frames in your walking animation
+  BNE skip_increment
+  LDA #$00
+  STA walkCounter
+  INC walkAnimation
+skip_increment:
+
 done_checking_left:
 
 check_right:
@@ -206,41 +236,21 @@ check_right:
   BEQ check_jump
   ; Check if moving right would not go beyond the right screen edge
   LDA player_x
-  CMP #MAX_X_POSITION       ; Checks right screen limit
+  CMP #MAX_X_POSITION
   BEQ done_checking_right
+  INC player_x
 
+  LDA walkCounter
+  INX
+  CPX #$01   ; Change this value based on the number of frames in your walking animation
+  BNE skip_increment_right
+  LDA #$00
+  STA walkCounter
+  INC walkAnimation
+skip_increment_right:
 
-  INC player_x              ; Increase x coordinate to move right
-  JMP platform_range        ; Checks if player within platform range after every horizontal movement
 done_checking_right:
 
-platform_range:
-  LDA player_x           ; Load player's X coordinate
-  CMP #MIN_PLATFORM_X    ; Compare with platform's minimum X coordinate
-  BCC not_on_platform     ; Branch if player is to the left of the platform
-  LDA player_x
-  CMP #MAX_PLATFORM_X    ; Compare with platform's maximum X coordinate
-  BCS not_on_platform     ; Branch if player is to the right of the platform
-  LDA #$01               
-  STA inPlatformRange    ; Set inPlatformRange flag to 1
-  LDA onPlatform
-  CMP #1                 ; Check if on platform
-  BEQ fall_from_platform    ; If on platform, check if in range of platform to fall or stay on it
-  JMP check_jump
-
-not_on_platform:
-  LDA #$00               
-  STA inPlatformRange    ; Set inPlatformRange flag to 0
-  LDA onPlatform
-  CMP #0                 ; Check if on platform
-  BEQ check_jump
-  JMP fall_from_platform   ; If on platform, check if the sprite can fall from platform
-
-fall_from_platform:
-  LDA inPlatformRange    
-  CMP #0                 ; Check if not in platform range
-  BEQ at_peak            ; If not it will start to fall again, using "at_peak" subroutine
-  JMP check_jump
 
 check_jump:
   LDA pad1
@@ -263,12 +273,10 @@ check_if_jumping:
 
 
 start_jump:
-  LDA #$00               
-  STA onPlatform         ; If jump starts, it will not be on platform
-  LDA spriteFall         
-  CMP #1                 ; Check if falling so it doesnt double jump
-  BEQ falling            ; Branch to keep falling
-  LDA #$3a               ; Load value to Accumulator (jump height)
+  LDA spriteFall
+  CMP #1
+  BEQ falling
+  LDA #$30               ; Load value to Accumulator (jump height)
   STA jumpCounter        ; Store value from accumulator to jumpCounter memory space
   LDA #$01               
   STA spriteJump         ; Set jump flag
@@ -291,41 +299,25 @@ at_peak:
   STA spriteFall         ; Store active flag to spriteFall, it means the sprite will fall now
   LDA #$00               ; Load 0 to accumulator
   STA spriteJump         ; Store flag to spriteJump, sprite is now falling
-  STA onPlatform
   JMP falling            ; Start falling
 
 falling:
-  LDA player_y                  ; Load player's Y coordinate to accum.
-  CMP #MAX_Y_POSITION           ; Compare with floor limit
-  BEQ finished_falling_ground   ; If equal, branch to finish_falling which deactivates falling flag
-  LDA inPlatformRange           
-  CMP #1                        ; Check if in platform range 
-  BEQ fall_on_platform          ; Jumps to a similar falling branch that takes the platform range into account
-  INC player_y                  ; Keep falling
-  JMP done_checking             ; Jump to the end of subroutine to restart loop
+  LDA player_y           ; Load player's Y coordinate to accum.
+  CMP #MAX_Y_POSITION    ; Compare with floor limit
+  BEQ finished_falling   ; If equal, branch to finish-falling which deactivates falling flag
+  INC player_y
+  JMP done_checking      ; Jump to the end of subroutine to restart loop
 
-fall_on_platform:
-  LDA player_y
-  CMP #PLATFORM_LEVEL           ; Checks if platform height was reached
-  BEQ finished_falling_plat
-  INC player_y                  ; keep falling
-  JMP done_checking
-
-finished_falling_plat:
-  LDA #$00               ; Loads 0 to accum
-  STA spriteFall         ; Sets spriteFall and spriteJump to 0, essentially ending the falling/jumping
-  STA spriteJump         
-  LDA #$01
-  STA onPlatform         ; If you fall on the platform, it sets the flag to one, the sprite is on the platform
-  JMP done_checking
-  
-finished_falling_ground:
+finished_falling:
   LDA #$00               ; Loads 0 to accum
   STA spriteFall         ; Sets spriteFall to 0, essentially ending the falling
   STA spriteJump         
   JMP done_checking      ; jump to the end
 
   done_checking:
+
+; Increment walkCounter for the next frame
+  INC walkCounter
 
   PLA ; Done with updates, restore registers
   TAY ; and return to where we called this
@@ -339,6 +331,7 @@ finished_falling_ground:
 .segment "VECTORS"
 .addr nmi_handler, reset_handler, irq_handler
 
+
 .segment "RODATA"
 palettes:
 .byte $10, $07, $20, $16
@@ -348,9 +341,14 @@ palettes:
 
 .byte $10, $09, $19, $20
 .byte $10, $01, $21, $31
-.byte $10, $06, $16, $26
+.byte $10, 06, $16, $26
 .byte $10, $09, $19, $20
 
+walking_frames:
+  .byte $06, $07
+  .byte $16, $17
+  .byte $08, $09
+  .byte $18, $19
 
 .segment "CHR"
 .incbin "lava_background.chr"
