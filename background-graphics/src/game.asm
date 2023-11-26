@@ -97,7 +97,8 @@ check_fall:
   LDA spriteFall
   BNE jump_sprite ; If spriteFall is non-zero, load jump sprite
 
-  JMP standing_sprite
+  JMP standing_sprite ; If you got here, both fall and jump flags are deactivated
+  
 
   standing_sprite:
     LDA #$06
