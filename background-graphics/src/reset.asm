@@ -1,7 +1,7 @@
 .include "constants.inc"
 
 .segment "ZEROPAGE"
-.importzp player_x, player_y
+.importzp player1_x, player1_y, player2_x, player2_y
 
 .segment "CODE"
 .import main
@@ -32,10 +32,17 @@ vblankwait2:
 	BPL vblankwait2
 
 	; initialize zero-page values
+  ; PLAYER 1 position
   LDA #$20
-  STA player_x
+  STA player1_x
   LDA #$b7
-  STA player_y
+  STA player1_y
+
+  ; PLAYER 2 position
+  LDA #$d0
+  STA player2_x
+  LDA #$b7
+  STA player2_y
   
   JMP main
 .endproc

@@ -3,18 +3,27 @@
 .import read_controller1
 
 .segment "ZEROPAGE"
-player_x: .res 1
-player_y: .res 1
-scroll: .res 1
-ppuctrl_settings: .res 1
+player1_x: .res 1
+player1_y: .res 1
+player2_x: .res 1
+player2_y: .res 1
 pad1: .res 1
+pad2: .res 1
 jumpCounter: .res 1
 jumpSpriteFlag: .res 1
 onPlatform: .byte 0
 inPlatformRange: .byte 0
 spriteJump: .byte 0
 spriteFall: .byte 0
-.exportzp player_x, player_y, pad1, jumpCounter, jumpSpriteFlag, spriteJump, spriteFall
+
+jumpCounter2: .res 1
+jumpSpriteFlag2: .res 1
+onPlatform2: .byte 0
+inPlatformRange2: .byte 0
+spriteJump2: .byte 0
+spriteFall2: .byte 0
+.exportzp player1_x, player1_y, pad1, jumpCounter, jumpSpriteFlag, spriteJump, spriteFall
+.exportzp player2_x, player2_y, pad2, jumpCounter2, jumpSpriteFlag2, spriteJump2, spriteFall2
 
 .segment "CODE"
 .proc irq_handler
@@ -28,7 +37,8 @@ spriteFall: .byte 0
   STA OAMDMA
 
 	JSR read_controller1
-  JSR draw_player
+  JSR draw_player1
+  JSR draw_player2
 	JSR update_player
 
 	LDA #$00
@@ -70,7 +80,7 @@ forever:
   JMP forever
 .endproc
 
-.proc draw_player
+.proc draw_player1  ; PLAYER ONE
   ; save registers
   PHP
   PHA
@@ -131,36 +141,142 @@ check_fall:
   STA $020e
 
   ; top left tile:
-  LDA player_y
+  LDA player1_y
   STA $0200
-  LDA player_x
+  LDA player1_x
   STA $0203
 
   ; top right tile (x + 8):
-  LDA player_y
+  LDA player1_y
   STA $0204
-  LDA player_x
+  LDA player1_x
   CLC
   ADC #$08
   STA $0207
 
   ; bottom left tile (y + 8):
-  LDA player_y
+  LDA player1_y
   CLC
   ADC #$08
   STA $0208
-  LDA player_x
+  LDA player1_x
   STA $020b
 
   ; bottom right tile (x + 8, y + 8)
-  LDA player_y
+  LDA player1_y
   CLC
   ADC #$08
   STA $020c
-  LDA player_x
+  LDA player1_x
   CLC
   ADC #$08
   STA $020f
+
+  ; restore registers and return
+  PLA
+  TAY
+  PLA
+  TAX
+  PLA
+  PLP
+  RTS
+.endproc
+
+.proc draw_player2 ; PLAYER TWO
+  ; save registers
+  PHP
+  PHA
+  TXA
+  PHA
+  TYA
+  PHA
+
+  LDA spriteJump2
+  BNE jump_sprite2 ; If spriteJump is non-zero, load jump sprite
+  JMP check_fall2
+
+check_fall2:
+  LDA spriteFall2
+  BNE jump_sprite2 ; If spriteFall is non-zero, load jump sprite
+
+  JMP standing_sprite2 ; If you got here, both fall and jump flags are deactivated
+  
+  standing_sprite2:
+    LDA #$26
+    STA $0211
+    LDA #$27
+    STA $0215
+    LDA #$36
+    STA $0219
+    LDA #$37
+    STA $021d
+    JMP continue_2
+  ; write player tile numbers
+  jump_sprite2:
+    LDA #$0a
+    STA $0211
+    LDA #$0b
+    STA $0215
+    LDA #$1a
+    STA $0219
+    LDA #$1b
+    STA $021d
+    JMP continue_2
+  
+  walk_sprite2:
+    LDA #$08
+    STA $0211
+    LDA #$09
+    STA $0215
+    LDA #$18
+    STA $0219
+    LDA #$19
+    STA $021d
+  
+  continue_2:
+  ; write player tile attributes
+  ; use palette 1 for player 2
+  LDA #$01
+  STA $0212
+  STA $0216
+  STA $021a
+  STA $021e
+
+  ; top left tile:
+  LDA player2_y
+  STA $0210
+  LDA player2_x
+  STA $0213
+
+  ; top right tile (x + 8):
+  LDA player2_y
+  STA $0214
+  LDA player2_x
+  CLC
+  ADC #$08
+  STA $0217
+
+  ; bottom left tile (y + 8):
+  LDA player2_y
+  CLC
+  ADC #$08
+  STA $0218
+  LDA player2_x
+  STA $021b
+
+  ; bottom right tile (x + 8, y + 8)
+  LDA player2_y
+  CLC
+  ADC #$08
+  STA $021c
+  LDA player2_x
+  CLC
+  ADC #$08
+  STA $021f
+
+  ; Mirror the sprite horizontally
+
+
 
   ; restore registers and return
   PLA
@@ -187,10 +303,10 @@ check_fall:
   AND #BTN_LEFT
   BEQ check_right ; If result is zero, left not pressed
   ; Check if moving left would not go beyond the left screen edge
-  LDA player_x
+  LDA player1_x
   CMP #MIN_X_POSITION       ; Checks left screen limit
   BEQ done_checking_left
-  DEC player_x              ; Decrease X to move left
+  DEC player1_x              ; Decrease X to move left
   JMP platform_range        ; Checks if player within platform range
 done_checking_left:
 
@@ -200,18 +316,18 @@ check_right:
   AND #BTN_RIGHT
   BEQ check_jump
   ; Check if moving right would not go beyond the right screen edge
-  LDA player_x
+  LDA player1_x
   CMP #MAX_X_POSITION       ; Checks right screen limit
   BEQ done_checking_right
-  INC player_x              ; Increase x coordinate to move right
+  INC player1_x              ; Increase x coordinate to move right
   JMP platform_range        ; Checks if player within platform range after every horizontal movement
 done_checking_right:
 
 platform_range:
-  LDA player_x           ; Load player's X coordinate
+  LDA player1_x           ; Load player's X coordinate
   CMP #MIN_PLATFORM_X    ; Compare with platform's minimum X coordinate
   BCC not_on_platform     ; Branch if player is to the left of the platform
-  LDA player_x
+  LDA player1_x
   CMP #MAX_PLATFORM_X    ; Compare with platform's maximum X coordinate
   BCS not_on_platform     ; Branch if player is to the right of the platform
   LDA #$01               
@@ -268,11 +384,11 @@ start_jump:
   JMP jumping            ; Start jumping
 
 jumping:
-  LDA player_y           ; Load Y coord to accum
+  LDA player1_y           ; Load Y coord to accum
   CMP #MIN_Y_POSITION    ; Compare with top of screen
   BEQ at_peak            ; Branch to 'at_peak' if sprite touches the top
   LDX jumpCounter        ; Load to X register what is in jumpCounter
-  DEC player_y           ; decrease player's Y coordinate (goes up)
+  DEC player1_y           ; decrease player's Y coordinate (goes up)
   DEX                    ; decrease X register 
   STX jumpCounter        ; Store what is in X register to jumpCounter
   CPX #0                 ; Check if X register is 0
@@ -288,20 +404,20 @@ at_peak:
   JMP falling            ; Start falling
 
 falling:
-  LDA player_y                  ; Load player's Y coordinate to accum.
+  LDA player1_y                  ; Load player's Y coordinate to accum.
   CMP #MAX_Y_POSITION           ; Compare with floor limit
   BEQ finished_falling_ground   ; If equal, branch to finish_falling which deactivates falling flag
   LDA inPlatformRange           
   CMP #1                        ; Check if in platform range 
   BEQ fall_on_platform          ; Jumps to a similar falling branch that takes the platform range into account
-  INC player_y                  ; Keep falling
+  INC player1_y                  ; Keep falling
   JMP done_checking             ; Jump to the end of subroutine to restart loop
 
 fall_on_platform:
-  LDA player_y
+  LDA player1_y
   CMP #PLATFORM_LEVEL           ; Checks if platform height was reached
   BEQ finished_falling_plat
-  INC player_y                  ; keep falling
+  INC player1_y                  ; keep falling
   JMP done_checking
 
 finished_falling_plat:
