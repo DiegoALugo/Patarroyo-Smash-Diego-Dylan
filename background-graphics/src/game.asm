@@ -103,27 +103,7 @@ check_fall:
   LDA spriteFall
   BNE jump_sprite ; If spriteFall is non-zero, load jump sprite
 
-  JMP standing_sprite ; If you got here, both fall and jump flags are deactivated
-  
-; Check if sprite is walking
-  LDA walkAnimation
-  CMP #$01   ; Check if the walking animation is active
-  BNE standing_sprite ; If not, use the standing sprite
-
-  ; Use the walking sprite tiles
-  LDA walkCounter
-  AND #$03   ; using lower 2 bits for animation frame
-  TAX ; transfer to x register
-  LDA walking_frames, X
-  STA $0201
-  LDA walking_frames + 1, X
-  STA $0205
-  LDA walking_frames + 2, X
-  STA $0209
-  LDA walking_frames + 3, X
-  STA $020d
-
-  JMP continue
+  JMP standing_sprite
 
   standing_sprite:
     LDA #$06
@@ -300,10 +280,6 @@ check_fall2:
   ADC #$08
   STA $021f
 
-  ; Mirror the sprite horizontally
-
-
-
   ; restore registers and return
   PLA
   TAY
@@ -334,7 +310,6 @@ check_fall2:
   BEQ done_checking_left
   DEC player_x              ; Decrease X to move left
   JMP platform_range        ; Checks if player within platform range
->>>>>>> 2e5522f686eaab02164f07ab29a9896883e90922
 done_checking_left:
 
 check_right:
@@ -348,7 +323,6 @@ check_right:
   BEQ done_checking_right
   INC player_x              ; Increase x coordinate to move right
   JMP platform_range        ; Checks if player within platform range after every horizontal movement
->>>>>>> 2e5522f686eaab02164f07ab29a9896883e90922
 done_checking_right:
 
 platform_range:
@@ -487,10 +461,6 @@ palettes:
 .byte $10, $01, $21, $31
 .byte $10, $06, $16, $26
 .byte $10, $09, $19, $20
-
-walking_frames:
-.byte $06, $07, $16, $17
-.byte $08, $09, $18, $19
 
 .segment "CHR"
 .incbin "lava_background.chr"
