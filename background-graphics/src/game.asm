@@ -67,12 +67,6 @@ load_palettes:
 
  JSR draw_background
 
- ; initializing walk and animation variables
-  LDA #$00
-  STA walkCounter
-  LDA #$00
-  STA walkAnimation
-
 vblankwait:       ; wait for another vblank before continuing
   BIT PPUSTATUS
   BPL vblankwait
