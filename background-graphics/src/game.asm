@@ -15,6 +15,10 @@ onPlatform: .byte 0
 inPlatformRange: .byte 0
 spriteJump: .byte 0
 spriteFall: .byte 0
+walkCounter: .res 1
+walkingFlag: .res 1
+walkingAnimation: .res 1
+facing_direction: .res 1   ; 0 --> Right, 1 --> left
 
 jumpCounter2: .res 1
 jumpSpriteFlag2: .res 1
@@ -67,6 +71,13 @@ load_palettes:
 
  JSR draw_background
 
+; initializing walk and animation variables
+  LDA #$00
+  STA walkCounter
+  STA walkingAnimation
+  STA walkingFlag
+  STA facing_direction
+
 vblankwait:       ; wait for another vblank before continuing
   BIT PPUSTATUS
   BPL vblankwait
@@ -89,29 +100,55 @@ forever:
   TYA
   PHA
 
-  LDA spriteJump
-  BNE jump_sprite ; If spriteJump is non-zero, load jump sprite
-  JMP check_fall
+  LDA facing_direction
+  CMP #0
+  BEQ check_R_jump
+  JMP check_L_jump
 
-check_fall:
-  LDA spriteFall
-  BNE jump_sprite ; If spriteFall is non-zero, load jump sprite
+  check_L_jump:
+    LDA spriteJump
+    BNE jump_left ; If spriteJump is non-zero, load jump sprite
+    JMP check_L_fall
 
-  JMP standing_sprite ; If you got here, both fall and jump flags are deactivated
-  
+  check_L_fall:
+    LDA spriteFall
+    BNE jump_left ; If spriteFall is non-zero, load jump sprite
+  ; If you got here, both fall and jump flags are deactivated
+    JMP check_L_walk
 
-  standing_sprite:
-    LDA #$06
+     jump_left:  ; LEFT JUMP SPRITE
+    LDA #$2a
     STA $0201
-    LDA #$07
+    LDA #$2b
     STA $0205
-    LDA #$16
+    LDA #$3a
     STA $0209
-    LDA #$17
+    LDA #$3b
     STA $020d
     JMP continue
-  ; write player tile numbers
-  jump_sprite:
+
+  check_L_walk:
+    LDA walkingFlag
+    CMP #1   ; Check if the walking animation is active
+    BNE standing_left ; If not, use the standing sprite
+
+    LDA walkingAnimation
+    CMP #0
+    BEQ walk_left
+    JMP standing_left
+
+  check_R_jump:
+    LDA spriteJump
+    BNE jump_right ; If spriteJump is non-zero, load jump sprite
+    JMP check_R_fall
+
+  check_R_fall:
+    LDA spriteFall
+    BNE jump_right ; If spriteFall is non-zero, load jump sprite
+  ; If you got here, both fall and jump flags are deactivated
+    JMP check_R_walk
+
+  jump_right:  ; RIGHT JUMP SPRITE
     LDA #$0a
     STA $0201
     LDA #$0b
@@ -121,8 +158,87 @@ check_fall:
     LDA #$1b
     STA $020d
     JMP continue
+
+  check_R_walk:
+    LDA walkingFlag
+    CMP #1   ; Check if the walking animation is active
+    BNE standing_right ; If not, use the standing sprite
+
+    LDA walkingAnimation
+    CMP #0
+    BEQ walk_right
+    JMP standing_right
+
+  walk_count:
+    INC walkCounter
+    LDA walkCounter
+    CMP #5
+    BEQ change_Anim
+    JMP continue
+
+  change_Anim:
+    LDA walkingAnimation
+    CMP #0
+    BEQ set_to_one
+    LDA #$00
+    STA walkingAnimation
+    JMP reset_counter
+
+  set_to_one:
+    LDA #$01
+    STA walkingAnimation
+    JMP reset_counter
+
+  reset_counter:
+    LDA #$00
+    STA walkCounter
+    JMP continue
+
+  count_if_walking:
+    LDA walkingAnimation
+    CMP #1
+    BEQ walk_count
+    JMP continue
+
+;---------------------------------Left facing sprites-------------------------------------;
+ standing_left:   ;  Left standing sprite
+    LDA #$26
+    STA $0201
+    LDA #$27
+    STA $0205
+    LDA #$36
+    STA $0209
+    LDA #$37
+    STA $020d
+    JMP count_if_walking
   
-  walk_sprite:
+  walk_left:   ; left walk sprite
+    LDA #$28
+    STA $0201
+    LDA #$29
+    STA $0205
+    LDA #$38
+    STA $0209
+    LDA #$39
+    STA $020d
+    JMP walk_count
+
+;---------------------------------Left facing sprites-------------------------------------;
+
+;-------------------------------------RIGHT facing sprites------------------------------------;
+
+  standing_right:   ;  Right standing sprite
+    LDA #$06
+    STA $0201
+    LDA #$07
+    STA $0205
+    LDA #$16
+    STA $0209
+    LDA #$17
+    STA $020d
+    JMP count_if_walking
+  
+  walk_right:   ; Right walk sprite
     LDA #$08
     STA $0201
     LDA #$09
@@ -131,7 +247,11 @@ check_fall:
     STA $0209
     LDA #$19
     STA $020d
-  
+
+    JMP walk_count
+  ;---------------------------------RIGHT facing sprites------------------------------------;
+
+
   continue:
   ; write player tile attributes
   ; use palette 0
@@ -293,17 +413,23 @@ check_fall2:
   TYA
   PHA
 
+  LDA #$00
+  STA walkingFlag
   ; Load button presses
   LDA pad1
 
   ; Check Left button
   AND #BTN_LEFT
   BEQ check_right ; If result is zero, left not pressed
+  LDA #$01
+  STA facing_direction
+  LDA #$01
+  STA walkingFlag
   ; Check if moving left would not go beyond the left screen edge
   LDA player1_x
   CMP #MIN_X_POSITION       ; Checks left screen limit
   BEQ done_checking_left
-  DEC player_x              ; Decrease X to move left
+  DEC player1_x              ; Decrease X to move left
   JMP platform_range        ; Checks if player within platform range
 done_checking_left:
 
@@ -312,11 +438,14 @@ check_right:
   LDA pad1
   AND #BTN_RIGHT
   BEQ check_jump
-  ; Check if moving right would not go beyond the right screen edge
+  LDA #$00
+  STA facing_direction
+  LDA #$01
+  STA walkingFlag
   LDA player1_x
   CMP #MAX_X_POSITION       ; Checks right screen limit
   BEQ done_checking_right
-  INC player_x              ; Increase x coordinate to move right
+  INC player1_x              ; Increase x coordinate to move right
   JMP platform_range        ; Checks if player within platform range after every horizontal movement
 done_checking_right:
 
@@ -386,7 +515,9 @@ jumping:
   BEQ at_peak            ; Branch to 'at_peak' if sprite touches the top
   LDX jumpCounter        ; Load to X register what is in jumpCounter
   DEC player1_y           ; decrease player's Y coordinate (goes up)
+  DEC player1_y
   DEX                    ; decrease X register 
+  DEX
   STX jumpCounter        ; Store what is in X register to jumpCounter
   CPX #0                 ; Check if X register is 0
   BEQ at_peak            ; If so, pleayer reached the peak
@@ -408,6 +539,7 @@ falling:
   CMP #1                        ; Check if in platform range 
   BEQ fall_on_platform          ; Jumps to a similar falling branch that takes the platform range into account
   INC player1_y                  ; Keep falling
+  INC player1_y
   JMP done_checking             ; Jump to the end of subroutine to restart loop
 
 fall_on_platform:
@@ -415,6 +547,7 @@ fall_on_platform:
   CMP #PLATFORM_LEVEL           ; Checks if platform height was reached
   BEQ finished_falling_plat
   INC player1_y                  ; keep falling
+  INC player1_y
   JMP done_checking
 
 finished_falling_plat:
@@ -456,6 +589,10 @@ palettes:
 .byte $10, $01, $21, $31
 .byte $10, $06, $16, $26
 .byte $10, $09, $19, $20
+
+walking_frames:
+.byte $06, $07, $16, $17
+.byte $08, $09, $18, $19
 
 .segment "CHR"
 .incbin "lava_background.chr"
