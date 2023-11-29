@@ -2,9 +2,10 @@
 
 .segment "ZEROPAGE"
 .importzp pad1
+.importzp pad2
 
 .segment "CODE"
-.export read_controller1
+.export read_controller1, read_controller2 
 .proc read_controller1
   PHA
   TXA
@@ -28,6 +29,37 @@ get_buttons:
                   ; onto right side of pad1
                   ; and leftmost 0 of pad1 into carry flag
   BCC get_buttons ; Continue until original "1" is in carry flag
+
+  PLP
+  PLA
+  TAX
+  PLA
+  RTS
+.endproc
+
+.proc read_controller2
+  PHA
+  TXA
+  PHA
+  PHP
+
+  ; write a 1, then a 0, to CONTROLLER2
+  ; to latch button states
+  LDA #$01
+  STA CONTROLLER2
+  LDA #$00
+  STA CONTROLLER2
+
+  LDA #%00000010
+  STA pad2  ; Update pad2 instead of pad1 for player 2
+
+get_buttons2:
+  LDA CONTROLLER2 ; Read next button's state
+  LSR A           ; Shift button state right, into carry flag
+  ROL pad2        ; Rotate button state from carry flag
+                  ; onto right side of pad2
+                  ; and leftmost 0 of pad2 into carry flag
+  BCC get_buttons2 ; Continue until original "1" is in carry flag
 
   PLP
   PLA

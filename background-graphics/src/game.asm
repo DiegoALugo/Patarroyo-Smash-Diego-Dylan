@@ -1,6 +1,7 @@
 .include "constants.inc"
 .include "header.inc"
 .import read_controller1
+.import read_controller2
 
 .segment "ZEROPAGE"
 player1_x: .res 1
@@ -16,10 +17,13 @@ inPlatformRange: .byte 0
 spriteJump: .byte 0
 spriteFall: .byte 0
 walkCounter: .res 1
+walkCounter2: .res 1
 walkingFlag: .res 1
+walkingFlag2: .res 1
 walkingAnimation: .res 1
-facing_direction: .res 1   ; 0 --> Right, 1 --> left
-
+walkingAnimation2: .res 1
+facing_direction: .res 1  
+facing_direction2: .res 1 ; 0 --> Right, 1 --> left
 jumpCounter2: .res 1
 jumpSpriteFlag2: .res 1
 onPlatform2: .byte 0
@@ -27,7 +31,7 @@ inPlatformRange2: .byte 0
 spriteJump2: .byte 0
 spriteFall2: .byte 0
 .exportzp player1_x, player1_y, pad1, jumpCounter, jumpSpriteFlag, spriteJump, spriteFall
-.exportzp player2_x, player2_y, pad2, jumpCounter2, jumpSpriteFlag2, spriteJump2, spriteFall2
+.exportzp player2_x, player2_y, pad2, jumpCounter2, jumpSpriteFlag2, spriteJump2, spriteFall2, facing_direction2, walkingFlag2
 
 .segment "CODE"
 .proc irq_handler
@@ -41,9 +45,11 @@ spriteFall2: .byte 0
   STA OAMDMA
 
 	JSR read_controller1
+  JSR read_controller2
   JSR draw_player1
   JSR draw_player2
 	JSR update_player
+  JSR update_player2
 
 	LDA #$00
 	STA $2005
@@ -77,7 +83,11 @@ load_palettes:
   STA walkingAnimation
   STA walkingFlag
   STA facing_direction
-
+  STA walkCounter2
+  STA walkingAnimation2
+  STA walkingFlag2
+  STA facing_direction2
+  
 vblankwait:       ; wait for another vblank before continuing
   BIT PPUSTATUS
   BPL vblankwait
@@ -304,7 +314,7 @@ forever:
 .endproc
 
 .proc draw_player2 ; PLAYER TWO
-  ; save registers
+   ; save registers
   PHP
   PHA
   TXA
@@ -312,28 +322,55 @@ forever:
   TYA
   PHA
 
-  LDA spriteJump2
-  BNE jump_sprite2 ; If spriteJump is non-zero, load jump sprite
-  JMP check_fall2
+  LDA facing_direction2
+  CMP #0
+  BEQ check_R_jump2
+  JMP check_L_jump2
 
-check_fall2:
-  LDA spriteFall2
-  BNE jump_sprite2 ; If spriteFall is non-zero, load jump sprite
+  check_L_jump2:
+    LDA spriteJump2
+    BNE jump_left2 ; If spriteJump is non-zero, load jump sprite
+    JMP check_L_fall2
 
-  JMP standing_sprite2 ; If you got here, both fall and jump flags are deactivated
-  
-  standing_sprite2:
-    LDA #$26
+  check_L_fall2:
+    LDA spriteFall2
+    BNE jump_left2 ; If spriteFall is non-zero, load jump sprite
+  ; If you got here, both fall and jump flags are deactivated
+    JMP check_L_walk2
+
+     jump_left2:  ; LEFT JUMP SPRITE
+    LDA #$2a
     STA $0211
-    LDA #$27
+    LDA #$2b
     STA $0215
-    LDA #$36
+    LDA #$3a
     STA $0219
-    LDA #$37
+    LDA #$3b
     STA $021d
-    JMP continue_2
-  ; write player tile numbers
-  jump_sprite2:
+    JMP continue2
+
+  check_L_walk2:
+    LDA walkingFlag2
+    CMP #1   ; Check if the walking animation is active
+    BNE standing_left2 ; If not, use the standing sprite
+
+    LDA walkingAnimation2
+    CMP #0
+    BEQ walk_left2
+    JMP standing_left2
+
+  check_R_jump2:
+    LDA spriteJump2
+    BNE jump_right2 ; If spriteJump is non-zero, load jump sprite
+    JMP check_R_fall2
+
+  check_R_fall2:
+    LDA spriteFall2
+    BNE jump_right2 ; If spriteFall is non-zero, load jump sprite
+  ; If you got here, both fall and jump flags are deactivated
+    JMP check_R_walk2
+
+  jump_right2:  ; RIGHT JUMP SPRITE
     LDA #$0a
     STA $0211
     LDA #$0b
@@ -342,9 +379,88 @@ check_fall2:
     STA $0219
     LDA #$1b
     STA $021d
-    JMP continue_2
+    JMP continue2
+
+  check_R_walk2:
+    LDA walkingFlag2
+    CMP #1   ; Check if the walking animation is active
+    BNE standing_right2 ; If not, use the standing sprite
+
+    LDA walkingAnimation2
+    CMP #0
+    BEQ walk_right2
+    JMP standing_right2
+
+  walk_count2:
+    INC walkCounter2
+    LDA walkCounter2
+    CMP #5
+    BEQ change_Anim2
+    JMP continue2
+
+  change_Anim2:
+    LDA walkingAnimation2
+    CMP #0
+    BEQ set_to_one2
+    LDA #$00
+    STA walkingAnimation2
+    JMP reset_counter2
+
+  set_to_one2:
+    LDA #$01
+    STA walkingAnimation2
+    JMP reset_counter2
+
+  reset_counter2:
+    LDA #$00
+    STA walkCounter2
+    JMP continue2
+
+  count_if_walking2:
+    LDA walkingAnimation2
+    CMP #1
+    BEQ walk_count2
+    JMP continue2
+
+;---------------------------------Left facing sprites-------------------------------------;
+ standing_left2:   ;  Left standing sprite
+    LDA #$26
+    STA $0211
+    LDA #$27
+    STA $0215
+    LDA #$36
+    STA $0219
+    LDA #$37
+    STA $021d
+    JMP count_if_walking2
   
-  walk_sprite2:
+  walk_left2:   ; left walk sprite
+    LDA #$28
+    STA $0211
+    LDA #$29
+    STA $0215
+    LDA #$38
+    STA $0219
+    LDA #$39
+    STA $021d
+    JMP walk_count2
+
+;---------------------------------Left facing sprites-------------------------------------;
+
+;-------------------------------------RIGHT facing sprites------------------------------------;
+
+  standing_right2:   ;  Right standing sprite
+    LDA #$06
+    STA $0211
+    LDA #$07
+    STA $0215
+    LDA #$16
+    STA $0219
+    LDA #$17
+    STA $021d
+    JMP count_if_walking2
+  
+  walk_right2:   ; Right walk sprite
     LDA #$08
     STA $0211
     LDA #$09
@@ -353,10 +469,13 @@ check_fall2:
     STA $0219
     LDA #$19
     STA $021d
-  
-  continue_2:
+
+    JMP walk_count2
+  ;---------------------------------RIGHT facing sprites------------------------------------;
+
+  continue2:
   ; write player tile attributes
-  ; use palette 1 for player 2
+  ; use palette 0
   LDA #$01
   STA $0212
   STA $0216
@@ -394,6 +513,7 @@ check_fall2:
   CLC
   ADC #$08
   STA $021f
+
 
   ; restore registers and return
   PLA
@@ -565,6 +685,176 @@ finished_falling_ground:
   JMP done_checking      ; jump to the end
 
   done_checking:
+
+  PLA ; Done with updates, restore registers
+  TAY ; and return to where we called this
+  PLA
+  TAX
+  PLA
+  PLP
+  RTS
+.endproc
+
+.proc update_player2 ; PLAYER TWO
+  PHP  ; Start by saving registers,
+  PHA  ; as usual.
+  TXA
+  PHA
+  TYA
+  PHA
+
+  LDA #$00
+  STA walkingFlag2
+  ; Load button presses
+  LDA pad2
+
+  ; Check Left button
+  AND #BTN_LEFT
+  BEQ check_right2 ; If result is zero, left not pressed
+  LDA #$01
+  STA facing_direction2
+  LDA #$01
+  STA walkingFlag2
+  ; Check if moving left would not go beyond the left screen edge
+  LDA player2_x
+  CMP #MIN_X_POSITION       ; Checks left screen limit
+  BEQ done_checking_left2
+  DEC player2_x              ; Decrease X to move left
+  JMP platform_range2       ; Checks if player within platform range
+done_checking_left2:
+
+check_right2:
+  ; Check Right button
+  LDA pad2
+  AND #BTN_RIGHT
+  BEQ check_jump2
+  LDA #$00
+  STA facing_direction2
+  LDA #$01
+  STA walkingFlag2
+  LDA player2_x
+  CMP #MAX_X_POSITION       ; Checks right screen limit
+  BEQ done_checking_right2
+  INC player2_x              ; Increase x coordinate to move right
+  JMP platform_range2       ; Checks if player within platform range after every horizontal movement
+done_checking_right2:
+
+platform_range2:
+  LDA player2_x           ; Load player's X coordinate
+  CMP #MIN_PLATFORM_X    ; Compare with platform's minimum X coordinate
+  BCC not_on_platform2     ; Branch if player is to the left of the platform
+  LDA player2_x
+  CMP #MAX_PLATFORM_X    ; Compare with platform's maximum X coordinate
+  BCS not_on_platform2     ; Branch if player is to the right of the platform
+  LDA #$01               
+  STA inPlatformRange2    ; Set inPlatformRange flag to 1
+  LDA onPlatform2
+  CMP #1                 ; Check if on platform
+  BEQ fall_from_platform2    ; If on platform, check if in range of platform to fall or stay on it
+  JMP check_jump2
+
+not_on_platform2:
+  LDA #$00               
+  STA inPlatformRange2    ; Set inPlatformRange flag to 0
+  LDA onPlatform2
+  CMP #0                 ; Check if on platform
+  BEQ check_jump2
+  JMP fall_from_platform2   ; If on platform, check if the sprite can fall from platform
+
+fall_from_platform2:
+  LDA inPlatformRange2    
+  CMP #0                 ; Check if not in platform range
+  BEQ at_peak2            ; If not it will start to fall again, using "at_peak" subroutine
+  JMP check_jump2
+
+check_jump2:
+  LDA pad2
+  AND #BTN_UP
+  BEQ check_if_jumping2   ; If Up Button NOT pressed, branch to check_if_jumping, else continue
+  LDY spriteJump2         ; Load jump flag 
+  CPY #0                 ; Compare with 0
+  BEQ start_jump2         ; Branch to start_jump If equal to 0
+  JMP check_if_jumping2   ; If NO branch, check if jumping/falling
+ 
+
+check_if_jumping2:
+  LDA spriteJump2         ; Load jump flag
+  CMP #1                 ; Compare accumulator with 1
+  BEQ jumping2            ; Branch to jump if flag is active (equal 1)
+  LDA spriteFall2         ; Load fall flag
+  CMP #1                 ; Compare accumulator with 1
+  BEQ falling2            ; Branch to fall if flag is active (equal 1)
+  JMP done_checking2      ; If neither jump or fall are active, jump to end of subroutine
+
+
+start_jump2:
+  LDA #$00               
+  STA onPlatform2         ; If jump starts, it will not be on platform
+  LDA spriteFall2         
+  CMP #1                 ; Check if falling so it doesnt double jump
+  BEQ falling2            ; Branch to keep falling
+  LDA #$3a               ; Load value to Accumulator (jump height)
+  STA jumpCounter2        ; Store value from accumulator to jumpCounter memory space
+  LDA #$01               
+  STA spriteJump2         ; Set jump flag
+  JMP jumping2            ; Start jumping
+
+jumping2:
+  LDA player2_y           ; Load Y coord to accum
+  CMP #MIN_Y_POSITION    ; Compare with top of screen
+  BEQ at_peak2            ; Branch to 'at_peak' if sprite touches the top
+  LDY jumpCounter2        ; Load to X register what is in jumpCounter
+  DEC player2_y           ; decrease player's Y coordinate (goes up)
+  DEC player2_y
+  DEY                    ; decrease X register 
+  DEY
+  STY jumpCounter2        ; Store what is in X register to jumpCounter
+  CPY #0                 ; Check if X register is 0
+  BEQ at_peak2            ; If so, pleayer reached the peak
+  JMP done_checking2      ; If not, jump to the end to run the loop again
+
+at_peak2:
+  LDA #$01               ; Load 1 to accumulator
+  STA spriteFall2         ; Store active flag to spriteFall, it means the sprite will fall now
+  LDA #$00               ; Load 0 to accumulator
+  STA spriteJump2         ; Store flag to spriteJump, sprite is now falling
+  STA onPlatform2
+  JMP falling2            ; Start falling
+
+falling2:
+  LDA player2_y                  ; Load player's Y coordinate to accum.
+  CMP #MAX_Y_POSITION           ; Compare with floor limit
+  BEQ finished_falling_ground2   ; If equal, branch to finish_falling which deactivates falling flag
+  LDA inPlatformRange2           
+  CMP #1                        ; Check if in platform range 
+  BEQ fall_on_platform2          ; Jumps to a similar falling branch that takes the platform range into account
+  INC player2_y                  ; Keep falling
+  INC player2_y
+  JMP done_checking2             ; Jump to the end of subroutine to restart loop
+
+fall_on_platform2:
+  LDA player2_y
+  CMP #PLATFORM_LEVEL           ; Checks if platform height was reached
+  BEQ finished_falling_plat2
+  INC player2_y                  ; keep falling
+  INC player2_y
+  JMP done_checking2
+
+finished_falling_plat2:
+  LDA #$00               ; Loads 0 to accum
+  STA spriteFall2         ; Sets spriteFall and spriteJump to 0, essentially ending the falling/jumping
+  STA spriteJump2        
+  LDA #$01
+  STA onPlatform2         ; If you fall on the platform, it sets the flag to one, the sprite is on the platform
+  JMP done_checking2
+  
+finished_falling_ground2:
+  LDA #$00               ; Loads 0 to accum
+  STA spriteFall2         ; Sets spriteFall to 0, essentially ending the falling
+  STA spriteJump2         
+  JMP done_checking2      ; jump to the end
+
+  done_checking2:
 
   PLA ; Done with updates, restore registers
   TAY ; and return to where we called this
